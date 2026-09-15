@@ -1,100 +1,171 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="id" class="light">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Glosarium Iklim</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+  <title>Glosarium Perubahan Iklim & Kualitas Udara</title>
   
-  <!-- Tailwind CSS CDN -->
+  <!-- Tailwind CSS CDN dengan Konfigurasi Dark Mode -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+    }
+  </script>
   
-  <!-- PapaParse CDN -->
+  <!-- PapaParse CDN untuk Parsing File CSV -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-</head>
-<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col font-sans">
 
-  <!-- Header & Pencarian -->
-  <header class="bg-teal-800 text-white py-10 px-4 shadow-md">
-    <div class="max-w-4xl mx-auto text-center">
-      <h1 class="text-3xl md:text-4xl font-extrabold tracking-tight mb-2">
-        Glosarium Iklim
+  <!-- CSS Khusus Cetak / PDF -->
+  <style>
+    @media print {
+      header, footer, #alphabetContainerWrapper, #printBtn, #resetFilter, #searchColumnSelect, #darkModeToggle {
+        display: none !important;
+      }
+      body {
+        background: white !important;
+        color: black !important;
+        padding-bottom: 0 !important;
+      }
+      #glossaryGrid {
+        display: block !important;
+      }
+      #glossaryGrid > div {
+        break-inside: avoid;
+        border: 1px solid #ccc !important;
+        margin-bottom: 12px !important;
+        box-shadow: none !important;
+      }
+    }
+  </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-screen flex flex-col font-sans transition-colors duration-200 pb-16">
+
+  <!-- Header & Navigasi Utama -->
+  <header class="bg-teal-800 dark:bg-teal-950 text-white py-8 sm:py-10 px-4 shadow-md relative">
+    
+    <!-- Tombol Sakelar Mode Gelap -->
+    <button 
+      id="darkModeToggle" 
+      type="button"
+      class="absolute top-3 right-3 sm:top-4 sm:right-4 bg-teal-700/60 dark:bg-slate-800 px-3 py-2 rounded-full hover:bg-teal-600 dark:hover:bg-slate-700 transition flex items-center justify-center text-xs sm:text-sm font-medium shadow-sm active:scale-95"
+      title="Ubah Mode Gelap/Terang"
+    >
+      <span class="dark:hidden">🌙 Mode Gelap</span>
+      <span class="hidden dark:inline">☀️ Mode Terang</span>
+    </button>
+
+    <div class="max-w-4xl mx-auto text-center mt-4 sm:mt-2">
+      <h1 class="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight mb-2">
+        Glosarium Perubahan Iklim
       </h1>
-      <p class="text-teal-100 text-sm md:text-base max-w-2xl mx-auto">
+      <p class="text-teal-100 dark:text-teal-200 text-xs sm:text-sm md:text-base max-w-2xl mx-auto px-2">
         Kamus digital istilah ilmiah klimatologi, meteorologi, dan dinamika atmosfer
       </p>
       
-      <!-- Kolom Pencarian -->
-      <div class="mt-6 max-w-xl mx-auto">
+      <!-- Panel Controls: Skop & Input Pencarian -->
+      <div class="mt-6 max-w-2xl mx-auto flex flex-col sm:flex-row gap-2 px-2">
+        <select 
+          id="searchColumnSelect" 
+          class="w-full sm:w-auto px-4 py-3 rounded-2xl sm:rounded-full border-none text-slate-800 bg-white shadow-md focus:outline-none focus:ring-4 focus:ring-teal-400 text-base sm:text-sm font-medium cursor-pointer shrink-0"
+        >
+          <option value="all">🔍 Semua Kolom</option>
+          <option value="term">🔤 Istilah Inggris</option>
+          <option value="translation">🇮🇩 Terjemahan Indonesia</option>
+          <option value="def">📖 Definisi / Penjelasan</option>
+        </select>
+
         <input 
           type="text" 
           id="searchInput" 
-          placeholder="Cari istilah, terjemahan, atau penjelasan..." 
-          class="w-full px-5 py-3 rounded-full text-slate-800 shadow-md focus:outline-none focus:ring-4 focus:ring-teal-400 text-sm md:text-base"
+          placeholder="Cari kata kunci..." 
+          class="w-full px-5 py-3 rounded-2xl sm:rounded-full text-slate-800 shadow-md focus:outline-none focus:ring-4 focus:ring-teal-400 text-base sm:text-sm"
         >
       </div>
     </div>
   </header>
 
   <!-- Konten Utama -->
-  <main class="max-w-6xl mx-auto px-4 py-8 flex-grow w-full">
-    <!-- Filter Alfabet (A-Z) -->
-    <div id="alphabetFilter" class="flex flex-wrap justify-center gap-1.5 mb-8"></div>
+  <main class="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex-grow w-full">
+    
+    <!-- Filter Alfabet Geser Horizontal -->
+    <div id="alphabetContainerWrapper" class="overflow-x-auto pb-3 mb-4 sm:mb-6 -mx-4 px-4 sm:mx-0 sm:px-0">
+      <div id="alphabetFilter" class="flex flex-nowrap sm:flex-wrap justify-start sm:justify-center gap-1.5 min-w-max">
+        <!-- Render tombol abjad A-Z via app.js -->
+      </div>
+    </div>
 
-    <!-- Info Status Data -->
-    <div class="flex justify-between items-center mb-6 pb-2 border-b border-slate-200 text-sm">
-      <span id="resultCount" class="font-medium text-slate-600">Memuat data glosarium...</span>
-      <button 
-        id="resetFilter" 
-        class="text-teal-700 hover:text-teal-900 font-semibold text-xs uppercase tracking-wider hidden"
-      >
-        Reset Filter
-      </button>
+    <!-- Toolbar Info Status Data & Cetak -->
+    <div class="flex flex-wrap justify-between items-center gap-2 mb-6 pb-2 border-b border-slate-200 dark:border-slate-800 text-xs sm:text-sm">
+      <span id="resultCount" class="font-medium text-slate-600 dark:text-slate-400">Memuat data glosarium...</span>
+      
+      <div class="flex items-center gap-2 sm:gap-3">
+        <button 
+          id="printBtn" 
+          type="button"
+          class="flex items-center gap-1.5 text-teal-700 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-950/60 px-3 py-1.5 rounded-lg border border-teal-200 dark:border-teal-800 font-semibold text-xs transition active:scale-95"
+        >
+          🖨️ Cetak / PDF
+        </button>
+
+        <button 
+          id="resetFilter" 
+          type="button"
+          class="text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 font-semibold text-xs uppercase tracking-wider hidden"
+        >
+          Reset Filter
+        </button>
+      </div>
     </div>
 
     <!-- Grid Kartu Glosarium -->
-    <div id="glossaryGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"></div>
+    <div id="glossaryGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+      <!-- Data CSV dirender di sini via app.js -->
+    </div>
   </main>
 
-  <!-- Footer -->
-  <footer class="bg-slate-900 text-slate-400 py-6 text-center text-xs border-t border-slate-800">
-    <p>&copy; 2026 Glosarium Klimatologi & Perubahan Iklim. Dikelola secara digital.</p>
+  <!-- Footer Fixed (Melayang Tetap di Dasar Layar) -->
+  <footer class="fixed bottom-0 left-0 right-0 bg-slate-900 dark:bg-slate-950 text-slate-400 py-3 text-center text-xs border-t border-slate-800 z-40 backdrop-blur-md bg-opacity-95">
+    <p>&copy; 2026 Glosarium Klimatologi & Kualitas Udara. Dikelola secara digital.</p>
   </footer>
 
   <!-- Pop-up Modal Detail -->
   <div 
     id="detailModal" 
-    class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50"
+    class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm hidden flex items-center justify-center p-3 sm:p-4 z-50"
   >
-    <div class="bg-white rounded-2xl max-w-xl w-full p-6 md:p-8 shadow-2xl relative border border-slate-100">
+    <div class="bg-white dark:bg-slate-800 rounded-2xl max-w-xl w-full max-h-[85vh] flex flex-col p-5 sm:p-7 shadow-2xl relative border border-slate-100 dark:border-slate-700">
       
-      <!-- Tombol Tutup -->
+      <!-- Tombol Tutup Modal -->
       <button 
         id="closeModal" 
         type="button"
-        class="absolute top-4 right-4 text-slate-400 hover:text-slate-700 text-2xl font-bold w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 transition"
+        class="absolute top-3 right-3 sm:top-4 sm:right-4 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-2xl font-bold w-9 h-9 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition active:scale-90"
       >
         &times;
       </button>
 
-      <!-- Content Modal -->
-      <span 
-        id="modalCategory" 
-        class="inline-block text-xs font-bold uppercase tracking-wider text-teal-700 bg-teal-50 border border-teal-200 px-3 py-1 rounded-full mb-3"
-      ></span>
+      <!-- Konten Detail yang Bisa Di-scroll -->
+      <div class="overflow-y-auto pr-1 sm:pr-2 flex-grow">
+        <span 
+          id="modalCategory" 
+          class="inline-block text-[11px] font-bold uppercase tracking-wider text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800 px-2.5 py-0.5 rounded-full mb-3"
+        ></span>
 
-      <h2 id="modalTerm" class="text-2xl md:text-3xl font-extrabold text-slate-900 mb-1 leading-tight"></h2>
-      
-      <p id="modalTranslation" class="text-base italic text-teal-600 font-medium mb-4"></p>
+        <h2 id="modalTerm" class="text-xl sm:text-2xl md:text-3xl font-extrabold text-slate-900 dark:text-white mb-1 leading-tight pr-6"></h2>
+        
+        <p id="modalTranslation" class="text-sm sm:text-base italic text-teal-600 dark:text-teal-400 font-medium mb-4"></p>
 
-      <div class="border-t border-slate-100 pt-4">
-        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Definisi Lengkap</h3>
-        <p id="modalDefinition" class="text-slate-700 leading-relaxed text-sm md:text-base max-h-60 overflow-y-auto pr-2"></p>
+        <div class="border-t border-slate-100 dark:border-slate-700 pt-3 sm:pt-4">
+          <h3 class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Definisi Lengkap</h3>
+          <p id="modalDefinition" class="text-slate-700 dark:text-slate-300 leading-relaxed text-xs sm:text-sm md:text-base"></p>
+        </div>
       </div>
 
     </div>
   </div>
 
-  <!-- Memanggil JavaScript -->
+  <!-- Memanggil Skrip JavaScript Utama -->
   <script src="app.js"></script>
 </body>
 </html>
